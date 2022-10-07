@@ -21,17 +21,38 @@
 			import { OrbitControls } from 'three/addons/OrbitControls.js';
 			import { GLTFLoader } from 'three/addons/GLTFLoader.js';
 			import { RGBELoader } from 'three/addons/RGBELoader.js';
+			import { GUI } from 'three/addons/lil-gui.module.min.js';
 
-			let camera, scene, renderer;
+
+			var container, controls;
+
+    		var camera, scene, renderer, mixer, clock;
+
+			var animate_on = 0;
+
+			const params = {
+				abrir: abrir
+			};
+
 			init();
+			//animate();
 			render();
 			
+
+			
+
+
 			function init() {
 				const container = document.createElement( 'div' );
 				document.body.appendChild( container );
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 2000 );
 				camera.position.set( -50, 0, 50 );
+				clock = new THREE.Clock();
 				scene = new THREE.Scene();
+				const gui = new GUI();
+				gui.add( params, 'abrir' ).name( 'Animação' );
+				//h.open();
+				//gui.open();
 
 				new RGBELoader()
 					.setPath( './texture/' )
@@ -41,11 +62,17 @@
 						//scene.background = texture;
 
 						scene.environment = texture;
-						render();
 						const loader = new GLTFLoader().setPath( './model/' );
-						loader.load( 'UFFS.glb', function ( glb ) {
+						loader.load( 'animate.glb', function ( glb ) {
 							scene.add( glb.scene );
-							render();
+							mixer = new THREE.AnimationMixer( glb.scene );
+            
+           					glb.animations.forEach( ( clip ) => {
+              
+                			mixer.clipAction( clip ).play();
+              
+            				} );
+
 						} );
 					} );
 
@@ -58,8 +85,10 @@
 				container.appendChild( renderer.domElement );
 				const controls = new OrbitControls( camera, renderer.domElement );
 				controls.addEventListener( 'change', render );
-				controls.autoRotate = true;
-				window.addEventListener( 'resize', onWindowResize );
+				//controls.autoRotate = true;
+				controls.update();
+				window.addEventListener( 'resize', onWindowResize);
+
 
 			}
 
@@ -75,6 +104,24 @@
 				renderer.render( scene, camera );
 
 			}
+
+			function abrir(){
+				animate();
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				var delta = clock.getDelta();
+				if ( mixer) {
+					mixer.update(delta);
+					//animate_on = true;
+				}
+				renderer.render( scene, camera );
+    }
+		function addTriangle(){
+			return 1;
+		}
+
 
 		</script>
 

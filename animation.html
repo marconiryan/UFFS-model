@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+	<head>
+		<title>UFFS Virtual</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="style/main.css">
+	</head>
+	<body>
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "./script/base/three.module.js",
+					"three/addons/": "./script/addons/"
+				}
+			}
+		</script>
+		<script type="module">
+
+			import * as THREE from 'three';
+			import { OrbitControls } from 'three/addons/OrbitControls.js';
+			import { GLTFLoader } from 'three/addons/GLTFLoader.js';
+			import { RGBELoader } from 'three/addons/RGBELoader.js';
+			import { GUI } from 'three/addons/lil-gui.module.min.js';
+
+
+			var container, controls;
+
+    		var camera, scene, renderer, mixer, clock;
+			let raycaster;
+			let INTERSECTED;
+			var canOpen = false, button = false;
+			var last_scene = 0;
+			const params = {
+				abrir: abrir
+			};
+			const pointer = new THREE.Vector2();
+
+			init();
+			animate();
+			//render();
+			
+
+			function init() {
+				const container = document.createElement( 'div' );
+				document.body.appendChild( container );
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 2000 );
+				camera.position.set( -50, 0, 50 );
+				clock = new THREE.Clock();
+				scene = new THREE.Scene();
+				const gui = new GUI();
+				gui.add( params, 'abrir' ).name( 'Animação' );
+				//h.open();
+				//gui.open();
+
+				new RGBELoader()
+					.setPath( './texture/' )
+					.load( 'pedestrian_overpass_1k.hdr', function ( texture ) {
+
+						texture.mapping = THREE.EquirectangularReflectionMapping;
+						//const fundo = new THREE.TextureLoader().load( "./texture/fundo.webp" );
+						//console.log(fundo);
+						//scene.background = fundo;
+
+						scene.environment = texture;
+						const loader = new GLTFLoader().setPath( './model/' );
+						loader.load( 'animate.glb', function ( glb ) {
+							scene.add( glb.scene );
+							mixer = new THREE.AnimationMixer( glb.scene );
+							//mixer.setTime(10);
+							console.log(glb);
+							last_scene = glb.animations[glb.animations.length - 5].duration;
+							
+           					glb.animations.forEach( ( clip ) => {
+							
+                			mixer.clipAction( clip ).play();
+							//console.log(clip);
+              
+            				} );
+
+							//mixer.clipAction(glb.animations[glb.animations.length - 1]).play();
+							//mixer.glb.animations[glb.animations.length - 1].play()
+
+						} );
+					} );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.toneMapping = THREE.ACESFilmicToneMapping;
+				renderer.toneMappingExposure = 1;
+				renderer.outputEncoding = THREE.sRGBEncoding;
+				
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render );
+				controls.autoRotate = true;
+				window.addEventListener( 'resize', onWindowResize);
+				//controls.autoRotate = true;
+				//controls.update();
+				raycaster = new THREE.Raycaster();
+                document.addEventListener( 'mousemove', onPointerMove );
+                //document.addEventListener('click', onClick)
+                document.addEventListener( 'mousedown', onDocumentMouseDown );
+				document.addEventListener( 'mouseup', onDocumentMouseUp );
+				
+				container.appendChild( renderer.domElement );
+
+			}
+
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				render();
+
+			}
+
+
+			function onDocumentMouseDown(event){
+                button = event.button == 0;
+            }
+
+            function onDocumentMouseUp(){
+                button = false;
+            }
+
+            function onPointerMove( event ) {
+                pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+                pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+            }
+
+
+            function onObject(name){
+                raycaster.setFromCamera( pointer, camera );
+                const intersects = raycaster.intersectObjects( scene.children, true );
+				console.log(intersects);
+
+                if ( intersects.length > 0 ) {
+                	if ( INTERSECTED != intersects[ 0 ].object ) {
+                        if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+
+                        console.log(intersects[ 0 ].object.material.name);
+                        INTERSECTED = intersects[ 0 ].object;
+                        INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+                        INTERSECTED.material.emissive.setHex( 0xff0000 );
+                        if(button){
+                            console.log("AAAAAAAAAA")
+                        }
+                        return true;
+                        
+                    }
+                } else {
+                    if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+                    INTERSECTED = null;
+
+                }
+                return false;
+            }
+
+            function onClickedObject(){
+                return onObject();
+            }
+
+	
+			function render() {
+				if(onClickedObject()){
+					camera.updateProjectionMatrix();
+                }
+				renderer.render( scene, camera );
+
+			}
+
+			function abrir(){
+				canOpen = true;
+			}
+
+
+			function gltfAnimate(){
+				var delta = clock.getDelta();
+				if ( mixer && canOpen) {
+					if(mixer.time <= last_scene -0.1)
+						mixer.update(delta)
+
+					console.log(mixer.time)
+				}
+
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				gltfAnimate();
+				render();
+    }
+
+
+		</script>
+
+	</body>
+</html>

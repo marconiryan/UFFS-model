@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+	<head>
+		<title>UFFS Virtual</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="style/main.css">
+	</head>
+	<body>
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "./script/base/three.module.js",
+					"three/addons/": "./script/addons/"
+				}
+			}
+		</script>
+		<script type="module">
+
+			import * as THREE from 'three';
+			import { OrbitControls } from 'three/addons/OrbitControls.js';
+			import { GLTFLoader } from 'three/addons/GLTFLoader.js';
+			import { RGBELoader } from 'three/addons/RGBELoader.js';
+
+			let camera, scene, renderer, raycaster;
+            let button = false;
+            let INTERSECTED;
+			let R = 20,G = 0,B = 0
+            const pointer = new THREE.Vector2();    
+            
+            init();
+            animate();
+			//render();
+		
+			function init() {
+				const container = document.createElement( 'div' );
+				document.body.appendChild( container );
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 2000 );
+				camera.position.set( -50, 0, 50 );
+				scene = new THREE.Scene();
+
+				new RGBELoader()
+					.setPath( './texture/' )
+					.load( 'pedestrian_overpass_1k.hdr', function ( texture ) {
+
+						texture.mapping = THREE.EquirectangularReflectionMapping;
+						//scene.background = texture;
+
+						scene.environment = texture;
+						render();
+						const loader = new GLTFLoader().setPath( './model/' );
+						loader.load( 'TESTE.glb', function ( glb ) {
+							scene.add( glb.scene );
+							render();
+						} );
+					} );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.toneMapping = THREE.ACESFilmicToneMapping;
+				renderer.toneMappingExposure = 1;
+				renderer.outputEncoding = THREE.sRGBEncoding;
+				
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render );
+				controls.autoRotate = true;
+				window.addEventListener( 'resize', onWindowResize );
+                raycaster = new THREE.Raycaster();
+                document.addEventListener( 'mousemove', onPointerMove );
+                //document.addEventListener('click', onClick)
+                document.addEventListener( 'mousedown', onDocumentMouseDown );
+				document.addEventListener( 'mouseup', onDocumentMouseUp );
+                container.appendChild( renderer.domElement );
+			}
+
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				render();
+
+			}
+
+
+            function onDocumentMouseDown(event){
+                button = event.button == 0;
+            }
+
+            function onDocumentMouseUp(){
+                button = false;
+            }
+
+            function onPointerMove( event ) {
+                pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+                pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+            }
+
+
+            function onObject(name){
+                raycaster.setFromCamera( pointer, camera );
+                const intersects = raycaster.intersectObjects( scene.children, true );
+				console.log(intersects);
+
+                if ( intersects.length > 0 && intersects[ 0 ].object.material.name == "Padrao") {
+                    //if ( INTERSECTED != intersects[ 0 ].object ) {
+                        if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+
+                        console.log(intersects[ 0 ].object.material.name);
+                        INTERSECTED = intersects[ 0 ].object;
+                        INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+                        INTERSECTED.material.emissive.setHex( 0xff0000 );
+                        if(button){
+                            console.log("AAAAAAAAAA")
+                        }
+                        return true;
+                        
+                    //}
+                } else {
+                    if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+                    INTERSECTED = null;
+
+                }
+                return false;
+            }
+
+            function onClickedObject(){
+                return onObject() && button;
+            }
+
+			function render(event) {
+                if(onClickedObject()){
+					let color = new THREE.Color(R,G,B);
+					scene.background = color; 
+					R += 1;
+					camera.updateProjectionMatrix();
+                }
+				renderer.render( scene, camera );
+
+			}
+
+
+            function animate(){
+                requestAnimationFrame( animate );
+                render();
+            }
+
+		</script>
+
+	</body>
+</html>
